@@ -1,6 +1,9 @@
-
 """
 Source code for IntentClassifier.
+
+
+python intent_classifier.py train --config="config.json" \
+    --examples_file="confusion_examples.yml"
 
 intent_classifier.py
 """
@@ -13,11 +16,9 @@ from dataclasses import dataclass
 import yaml
 from pprint import pprint
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-
 import numpy as np
+
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report, cohen_kappa_score
@@ -375,26 +376,3 @@ if __name__ == "__main__":
     fire.Fire(IntentClassifier)
 
 
-# if __name__ == "__main__":
-#     examples_file = 'confusion_examples.yml'
-
-#     # Setup training parameters
-#     training_config = Config(
-#         # wandb_project="test_wandb",
-#         dataset_name=examples_file,
-#         sent_hl_units=64,
-#         sent_dropout=0.3,
-#         learning_rate=0.0005,
-#         epochs=500,
-#         callback_patience=20,
-#         validation_split=0.2
-#     )
-
-#     # Initialize the classifier
-#     classifier = IntentClassifier(config=training_config,
-#                                   examples_file=examples_file)
-
-#     # Start training
-#     classifier.train(save_model="models/confusion_classifier/")
-#     # classifier.predict(input_text="Hello, how are you?", get_certainty=True)
-#     # classifier.cross_validation(n_splits=3)

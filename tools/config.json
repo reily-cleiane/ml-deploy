@@ -1,0 +1,10 @@
+{
+    "wandb_project": "test_wandb",
+    "dataset_name": "confusion_examples.yml",
+    "sent_hl_units": 64,
+    "sent_dropout": 0.3,
+    "learning_rate": 0.0005,
+    "epochs": 500,
+    "callback_patience": 20,
+    "validation_split": 0.2
+}

@@ -1,42 +1,121 @@
 # ml-deploy-test
 
-Repositório da API para classificação de intenção baseada em texto, usando FastAPI + MongoDB.
+
+## 🚀 Features
+
+* Train and predict text intent using a custom classifier
+* MongoDB integration for storing predictions
+* FastAPI endpoints with automatic Swagger docs
+* Dockerized for easy deployment
+* Public exposure via ngrok
+
+## 📁 Project Structure
 
 ```
 intent-classifier/
-├── app.py
-├── Dockerfile
-├── docker-compose.yml
-├── README.md
+
+ml-deploy-test/
+├── Dockerfile              # Docker container setup
+├── docker-compose.yml      # Compose file for API and MongoDB
+├── README.md               # This file
 ├── app/
-│   └── classifier_wrapper.py
-├── models/
-│   └── ...
+│   └── app.py                  # FastAPI app entry point
 ├── db/
-│   ├── models.py
-│   └── engine.py
+│   ├── models.py           # MongoDB schemas
+│   └── engine.py           # MongoDB connection logic
+├── tools/
+│   ├── models/             # Trained models
+│   │   └── ...                 
+│   └── classifier_wrapper.py  # IntentClassifier implementation
+├── requirements.txt         
+└── .gitignore              # Git ignore rules
 ```
 
-## Intent Classifier API
+### 📦 Setup Instructions
 
-### Endpoints
+#### 1. Clone the Repository 📁
 
-- `POST /predict`  
-  **Body**:
-  ```json
+```bash
+git clone https://github.com/adaj/ml-deploy-test.git
+cd ml-deploy-test
+```
+
+### 2. Configure MongoDB Atlas 🌱
+
+Create a free MongoDB Atlas cluster: 
+1. Sign up at https://www.mongodb.com/cloud/atlas
+2. Create a new Shared Cluster (M0)
+3. Add your IP to the access list (e.g., 0.0.0.0/0 for testing)
+4. Create a database user and password
+5. Copy the connection string (e.g., mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname) 
+
+Set the connection string as an environment variable:
+```bash
+export MONGODB_URI="your-connection-string"
+```
+
+### 3. Build and Run with Docker 🐳
+
+```bash
+docker-compose up --build
+The API will be available at http://localhost:8000.
+```
+
+### 4. Expose API with ngrok 📢
+
+Install ngrok:
+```bash
+npm install -g ngrok  # or follow instructions at https://ngrok.com/download
+```
+
+Authenticate ngrok (replace YOUR_AUTHTOKEN with your token):
+```bash
+ngrok config add-authtoken YOUR_AUTHTOKEN
+```
+
+Start ngrok tunnel:
+```bash
+ngrok http 8000
+```
+
+You’ll receive a public URL like `https://abc123.ngrok.io.
+
+### 5. API Usage 🧪
+
+`POST /predict`
+
+Make a prediction:
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Não entendo como isso é possível"}'
+```
+
+Response:
+```json
   {
-    "text": "Olá, tudo bem?"
+  "text": "Não entendo como isso é possível",
+  "prediction": "confusion",
+  "certainty": 0.97
   }
-  ```
-  **Response**:
-  ```json
-    {
-    "text": "Olá, tudo bem?",
-    "prediction": "saudação",
-    "certainty": 0.97
-    }
-  ```
+```
+Access the interactive Swagger UI at `http://localhost:8000/docs` or via your ngrok URL.
 
-### Rode localmente
 
-`docker-compose up --build`
+## 🛠️ Development Notes
+
+* The IntentClassifier can be trained (`IntentClassifier(config, examples_file).train(save_model="model-0.1")`) 
+and later, initialized with `load_model="model-0.1"` to load a pre-trained model.
+
+* Training data is loaded from examples_file specified in the config.
+
+* Predictions are stored in MongoDB for later analysis.
+
+## 📚 Resources
+
+* FastAPI Docs: https://fastapi.tiangolo.com/
+* MongoDB Atlas: https://www.mongodb.com/cloud/atlas
+* ngrok Docs: https://ngrok.com/docs
+
+📄 License
+This project is licensed under the MIT License.

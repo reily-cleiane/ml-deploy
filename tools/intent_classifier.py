@@ -1,8 +1,7 @@
 """
 Source code for IntentClassifier.
 
-
-python intent_classifier.py train --config="config.json" \
+python intent_classifier.py train --config="config.yml" \
     --examples_file="confusion_examples.yml"
 
 intent_classifier.py
@@ -83,13 +82,14 @@ class IntentClassifier:
         # Load intents from the examples file if provided
         self._load_intents(examples_file)
         # Initialize stop_words
-        self._load_stop_words(config.stop_words_file)
+        self._load_stop_words(self.config.stop_words_file)
         # Set up one-hot encoder
         self._setup_encoder()
         # Set up W&B
         if self.config.wandb_project:
               # Create wandb run instance
-              self.wandb_run = wandb.init(project=self.config.wandb_project, config=config.__dict__)
+              self.wandb_run = wandb.init(project=self.config.wandb_project, 
+                                          config=self.config.__dict__)
               # Create and log artifact
               artifact = wandb.Artifact("my_dataset", type="dataset")
               artifact.add_file(examples_file) # Assuming 'examples_file' is the dataset file
@@ -103,6 +103,7 @@ class IntentClassifier:
         if isinstance(config, str):
             with open(config, 'r') as f:
                 self.config = Config(**yaml.safe_load(f))
+            print(f"Loaded config from {config}.")
         elif isinstance(config, Config):
             self.config = config
         elif config is None:

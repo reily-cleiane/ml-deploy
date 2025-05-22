@@ -370,27 +370,31 @@ class IntentClassifier:
             self.wandb_run.finish()
         return results
 
-
 if __name__ == "__main__":
-    examples_file = 'confusion_examples.yml'
+    import fire
+    fire.Fire(IntentClassifier)
 
-    # Setup training parameters
-    training_config = Config(
-        # wandb_project="test_wandb",
-        dataset_name=examples_file,
-        sent_hl_units=64,
-        sent_dropout=0.3,
-        learning_rate=0.0005,
-        epochs=500,
-        callback_patience=20,
-        validation_split=0.2
-    )
 
-    # Initialize the classifier
-    classifier = IntentClassifier(config=training_config,
-                                  examples_file=examples_file)
+# if __name__ == "__main__":
+#     examples_file = 'confusion_examples.yml'
 
-    # Start training
-    classifier.train(save_model="models/confusion_classifier/")
-    # classifier.predict(input_text="Hello, how are you?", get_certainty=True)
-    # classifier.cross_validation(n_splits=3)
+#     # Setup training parameters
+#     training_config = Config(
+#         # wandb_project="test_wandb",
+#         dataset_name=examples_file,
+#         sent_hl_units=64,
+#         sent_dropout=0.3,
+#         learning_rate=0.0005,
+#         epochs=500,
+#         callback_patience=20,
+#         validation_split=0.2
+#     )
+
+#     # Initialize the classifier
+#     classifier = IntentClassifier(config=training_config,
+#                                   examples_file=examples_file)
+
+#     # Start training
+#     classifier.train(save_model="models/confusion_classifier/")
+#     # classifier.predict(input_text="Hello, how are you?", get_certainty=True)
+#     # classifier.cross_validation(n_splits=3)

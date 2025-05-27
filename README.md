@@ -70,16 +70,27 @@ Set the connection string as an environment variable:
 export MONGODB_URI="your-connection-string"
 ```
 
-#### 4. Set your `.env`
+#### 4. 
 
-Include the MONGO_URI from your MongoDB Atlas cluster.
+Set your `.env`, include the MONGO_URI from your MongoDB Atlas cluster.
 
-#### 5. Build and Run with Docker 🐳
+Create your API token (requires authenticated access to MongoDB cluster):
+```bash
+# Criar um novo token
+python db/tokens.py create --owner="alguem" --expires_in_days=365
+
+# Ler todos os tokens disponveis
+python db/tokens.py read_all
+```
+
+
+#### 6. Build and Run with Docker 🐳
 
 ```bash
 docker-compose up --build
-The API will be available at http://localhost:8000.
 ```
+
+The API will be available at http://localhost:8000.
 
 #### 6. Expose API with ngrok 📢
 

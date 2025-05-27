@@ -1,16 +1,17 @@
 """
 
 # Criar um novo token
-python tokens.py create --owner="alguem" --expires_in_days=365
+python db/tokens.py create --owner="alguem" --expires_in_days=365
 
 # Ler todos os tokens
-python tokens.py read_all
+python db/tokens.py read_all
 
 """
 
 import uuid
-from datetime import datetime
-from db.engine import get_mongo_collection
+from datetime import datetime, timedelta
+from engine import get_mongo_collection
+
 
 class TokenManager:
     """

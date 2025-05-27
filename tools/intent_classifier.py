@@ -1,10 +1,17 @@
 """
 Source code for IntentClassifier.
 
-python intent_classifier.py train --config="config.yml" \
-    --examples_file="confusion_examples.yml"
+python intent_classifier.py train \
+    --config="confusion_config.yml" \
+    --examples_file="confusion_examples.yml" \
+    --save_model="models/confusion-clf-v1/"
 
-intent_classifier.py
+python intent_classifier.py predict 
+    --load_model="models/confusion-clf-v1/" \
+    --input_text="Não tenho certeza sobre isso"
+    
+
+python intent_classifier.py cross_validation --n_splits=5
 """
 # instalar alguns pacotes auxiliares
 
@@ -111,18 +118,11 @@ class IntentClassifier:
             if load_model is not None:
                 self.model = tf.keras.models.load_model(load_model)
                 print(f"Loaded keras model from {load_model}.")
-                config_path = os.path.join(load_model, "config.yml")
-                if os.path.exists(config_path):
-                    with open(config_path, 'r') as f:
-                        self.config = Config(**yaml.safe_load(f))
-                else:
-                    print(f"WARNING: No config file found at {config_path}.")
-
-            # Use default if config was not provided
-            if self.config is None:
-                if self.config.dataset_name is None or examples_file is None:
-                    raise ValueError("Both dataset_name and examples_file must be provided if config is None.")
-                self.config = Config(self.config.dataset_name)
+                config_path = load_model.replace(".keras", "_config.yml") #os.path.join(os.path.dirname(load_model), f"{self.config.dataset_name}_config.yml")
+                with open(config_path, 'r') as f:
+                    self.config = Config(**yaml.safe_load(f))
+            else:
+                raise ValueError("config must be a path to a YAML file, a Config object, or None.")
         else:
             raise ValueError("config must be a path to a YAML file, a Config object, or None.")
     def _load_intents(self, examples_file):
@@ -181,17 +181,18 @@ class IntentClassifier:
         if self.config.wandb_project:
             callbacks.append(WandbMetricsLogger())
         
-        # Configurar ExponentialDecay
+        # Configure ExponentialDecay
         if self.config.learning_rate is not None and not isinstance(self.config.learning_rate, str):
             lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                initial_learning_rate=self.config.learning_rate,  # Use config value
+                initial_learning_rate=self.config.learning_rate,
                 decay_steps=1000,
                 decay_rate=0.96,
                 staircase=False
             )
-            # Convert the learning rate to a Python float
-            def lr_scheduler(epoch):
-                return lr_schedule(epoch).numpy().astype(float) #convert to numpy then to float
+            
+            # Modified learning rate scheduler to properly handle epoch parameter
+            def lr_scheduler(epoch, lr):
+                return lr_schedule(epoch).numpy().astype(float)
             
             lr_scheduler_callback = tf.keras.callbacks.LearningRateScheduler(lr_scheduler)
             callbacks.append(lr_scheduler_callback)
@@ -226,7 +227,7 @@ class IntentClassifier:
 
         # Build model
         initializer = tf.keras.initializers.GlorotUniform(seed=seed)  # Set seed in initializer
-        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name="text_input")
+        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name="inputs")
         encoder = HubLayer(config.embedding_model, trainable=False, name="sent_encoder")(text_input)
         sent_hl = tf.keras.layers.Dense(sent_hl_units,
                                         kernel_initializer=initializer,
@@ -289,9 +290,14 @@ class IntentClassifier:
 
     def save_model(self, path):
         Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
-        self.model.save(path) 
+        # Save model in SavedModel format
+        if path.endswith('/'):
+            # Remove trailing slash if present
+            path = path.rstrip('/')
+        # Save the model
+        self.model.save(path)
         # Save config into a yaml file inside the model directory
-        config_path = os.path.join(os.path.dirname(path), "config.yml")
+        config_path = path.replace(".keras", "_config.yml") #os.path.join(os.path.dirname(path), f"{self.config.dataset_name}_config.yml")
         with open(config_path, 'w') as f:
             f.write(yaml.dump(self.config.__dict__))
         print(f"Model saved to {path}.")
@@ -374,6 +380,27 @@ class IntentClassifier:
 
 if __name__ == "__main__":
     import fire
-    fire.Fire(IntentClassifier)
+    
+    def train(config: str, examples_file: str, save_model: str):
+        """Train the model with the given configuration and examples."""
+        classifier = IntentClassifier(config=config, examples_file=examples_file)
+        classifier.train(save_model=save_model)
+        return classifier
+    
+    def predict(load_model: str, input_text: str):
+        """Make predictions using a trained model."""
+        classifier = IntentClassifier(load_model=load_model)
+        return classifier.predict(input_text)
+    
+    def cross_validation(n_splits: int = 3):
+        """Run cross-validation on the model."""
+        classifier = IntentClassifier()
+        return classifier.cross_validation(n_splits=n_splits)
+    
+    fire.Fire({
+        'train': train,
+        'predict': predict,
+        'cross_validation': cross_validation
+    })
 
 

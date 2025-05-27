@@ -38,9 +38,25 @@ ml-deploy-test/
 ```bash
 git clone https://github.com/adaj/ml-deploy-test.git
 cd ml-deploy-test
+
+conda create -n mlops python=3.10
 ```
 
-### 2. Configure MongoDB Atlas 🌱
+#### 2. Train/Load IntentClassifier Model
+
+```bash
+pip install - requirements.txt
+```
+
+
+```bash
+cd tools
+python intent_classifier.py train --config="config.yml" \
+    --examples_file="confusion_examples.yml" \
+    --save_model="confusion-clf-v1/"
+```
+
+#### 3. Configure MongoDB Atlas 🌱
 
 Create a free MongoDB Atlas cluster: 
 1. Sign up at https://www.mongodb.com/cloud/atlas
@@ -54,14 +70,18 @@ Set the connection string as an environment variable:
 export MONGODB_URI="your-connection-string"
 ```
 
-### 3. Build and Run with Docker 🐳
+#### 4. Set your `.env`
+
+Include the MONGO_URI from your MongoDB Atlas cluster.
+
+#### 5. Build and Run with Docker 🐳
 
 ```bash
 docker-compose up --build
 The API will be available at http://localhost:8000.
 ```
 
-### 4. Expose API with ngrok 📢
+#### 6. Expose API with ngrok 📢
 
 Install ngrok:
 ```bash
@@ -80,7 +100,7 @@ ngrok http 8000
 
 You’ll receive a public URL like `https://abc123.ngrok.io.
 
-### 5. API Usage 🧪
+#### 7. API Usage 🧪
 
 `POST /predict`
 

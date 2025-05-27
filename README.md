@@ -53,7 +53,7 @@ pip install - requirements.txt
 cd tools
 python intent_classifier.py train --config="config.yml" \
     --examples_file="confusion_examples.yml" \
-    --save_model="confusion-clf-v1/"
+    --save_model="confusion-clf-v1.keras"
 ```
 
 #### 3. Configure MongoDB Atlas 🌱
@@ -65,21 +65,18 @@ Create a free MongoDB Atlas cluster:
 4. Create a database user and password
 5. Copy the connection string (e.g., mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname) 
 
-Set the connection string as an environment variable:
-```bash
-export MONGODB_URI="your-connection-string"
-```
 
-#### 4. 
 
-Set your `.env`, include the MONGO_URI from your MongoDB Atlas cluster.
+#### 4. Prepare your environment
+
+Set the connection string as an environment variable MONGO_URI in your `.env`, taken from your MongoDB Atlas cluster.
 
 Create your API token (requires authenticated access to MongoDB cluster):
 ```bash
 # Criar um novo token
 python db/tokens.py create --owner="alguem" --expires_in_days=365
 
-# Ler todos os tokens disponveis
+# Read the tokens created
 python db/tokens.py read_all
 ```
 
@@ -92,7 +89,7 @@ docker-compose up --build
 
 The API will be available at http://localhost:8000.
 
-#### 6. Expose API with ngrok 📢
+#### 7. Expose API with ngrok 📢
 
 Install ngrok:
 ```bash
@@ -111,7 +108,7 @@ ngrok http 8000
 
 You’ll receive a public URL like `https://abc123.ngrok.io.
 
-#### 7. API Usage 🧪
+#### 8. API Usage 🧪
 
 `POST /predict`
 

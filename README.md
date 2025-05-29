@@ -40,6 +40,7 @@ ml-deploy-test/
 git clone https://github.com/adaj/ml-deploy-test.git
 cd ml-deploy-test
 
+# If you are not in a Colab Notebook, create your conda env
 conda create -n ml-deploy-test python=3.10
 
 pip install -r requirements.txt

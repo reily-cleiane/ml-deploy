@@ -111,7 +111,7 @@ except Exception as e:
 
 # Initialize database connection
 try:
-    collection = get_mongo_collection("intent_logs")
+    collection = get_mongo_collection(f"{ENV.upper()}_intent_logs")
     logger.info("Database connection established")
 except Exception as e:
     logger.error(f"Failed to connect to database: {str(e)}")
@@ -143,28 +143,21 @@ async def predict_confusion(request: TextRequest, owner=Depends(conditional_auth
         
         # Make prediction
         logger.info("Making prediction...")
-        pred_result = MODELS["confusion"].predict(request.text, get_certainty=True)
-        logger.info(f"Raw prediction result: {pred_result}")
-        logger.info(f"Prediction result type: {type(pred_result)}")
+        # The predict method now returns: (top_intent_name, dict_of_all_probs)
+        top_intent, all_probs = MODELS["confusion"].predict(request.text)
         
-        # Handle the prediction result - it returns a tuple when get_certainty=True
-        if isinstance(pred_result, tuple) and len(pred_result) == 2:
-            intents, certainties = pred_result
-            prediction = intents[0] if isinstance(intents, list) else intents
-            certainty = certainties[0] if isinstance(certainties, list) else certainties
-        elif isinstance(pred_result, dict):
-            prediction = pred_result.get('label') or pred_result.get('prediction')
-            certainty = pred_result.get('certainty')
-        else:
-            logger.error(f"Unexpected prediction result format: {pred_result}")
-            raise ValueError(f"Unexpected prediction result format: {type(pred_result)}")
+        logger.info(f"Top intent: {top_intent}")
+        logger.info(f"All probabilities: {all_probs}")
+
+        certainty = all_probs.get(top_intent) # Get certainty of the top_intent
         
-        logger.info(f"Processed prediction: {prediction}, certainty: {certainty}")
+        logger.info(f"Processed prediction: {top_intent}, certainty: {certainty}")
         # Create log entry
         log = {
             "text": request.text,
-            "prediction": prediction,
+            "prediction": top_intent,
             "certainty": float(certainty) if certainty is not None else None,
+            "all_probabilities": all_probs, # Log all probabilities
             "owner": owner
         }
         # Save to database
@@ -177,8 +170,9 @@ async def predict_confusion(request: TextRequest, owner=Depends(conditional_auth
 
         result = PredictionResult(
             text=request.text, 
-            prediction=prediction, 
-            certainty=float(certainty) if certainty is not None else None
+            prediction=top_intent, 
+            certainty=float(certainty) if certainty is not None else None,
+            all_probabilities=all_probs
         )
         logger.info(f"Returning result: {result}")
         return result

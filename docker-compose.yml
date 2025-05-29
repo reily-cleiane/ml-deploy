@@ -1,14 +1,33 @@
 version: "3.8"
 services:
-  api:
-    build: .
+  backend:
+    build:
+      context: .
+      dockerfile: app/Dockerfile.app
     ports:
       - "8000:8000"
     depends_on:
       - mongo
     env_file:
       - .env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: app/Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    environment:
+      - API_BASE_URL=http://backend:8000/intents
+
   mongo:
     image: mongo:latest
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

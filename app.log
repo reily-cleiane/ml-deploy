@@ -1,0 +1,19 @@
+2025-05-29 21:25:29,042 - app.app - INFO - Running in dev mode
+2025-05-29 21:25:29,045 - app.app - INFO - Loading confusion model...
+2025-05-29 21:25:29,056 - absl - INFO - Using /var/folders/hh/vz60ml8n45q2bw6b4_zltsqc0000gn/T/tfhub_modules to cache modules.
+2025-05-29 21:25:37,231 - absl - INFO - Fingerprint not found. Saved model loading will continue.
+2025-05-29 21:25:37,245 - absl - INFO - path_and_singleprint metric could not be logged. Saved model loading will continue.
+2025-05-29 21:25:43,202 - app.app - INFO - Confusion model loaded successfully
+2025-05-29 21:25:43,809 - app.app - INFO - Database connection established
+2025-05-29 21:30:25,666 - app.app - INFO - Incoming request: POST http://localhost:8000/intents/confusion
+2025-05-29 21:30:25,670 - app.app - INFO - Request headers: {'host': 'localhost:8000', 'user-agent': 'python-requests/2.32.3', 'accept-encoding': 'gzip, deflate', 'accept': '*/*', 'connection': 'keep-alive', 'content-length': '14', 'content-type': 'application/json'}
+2025-05-29 21:30:25,721 - app.app - INFO - Development mode: skipping authentication
+2025-05-29 21:30:25,745 - app.app - INFO - Confusion prediction request from user: dev_user
+2025-05-29 21:30:25,750 - app.app - INFO - Input text: 'oi'
+2025-05-29 21:30:25,752 - app.app - INFO - Making prediction...
+2025-05-29 21:30:28,705 - app.app - INFO - Top intent: neutral_statement
+2025-05-29 21:30:28,707 - app.app - INFO - All probabilities: {'certainty': 0.28762391209602356, 'confusion': 0.33988243341445923, 'neutral_statement': 0.3724936246871948}
+2025-05-29 21:30:28,724 - app.app - INFO - Processed prediction: neutral_statement, certainty: 0.3724936246871948
+2025-05-29 21:30:30,067 - app.app - INFO - Prediction logged to database
+2025-05-29 21:30:30,071 - app.app - INFO - Returning result: text='oi' prediction='neutral_statement' certainty=0.3724936246871948 all_probabilities={'certainty': 0.28762391209602356, 'confusion': 0.33988243341445923, 'neutral_statement': 0.3724936246871948}
+2025-05-29 21:30:30,074 - app.app - INFO - Response: 200 - Time: 4.408s

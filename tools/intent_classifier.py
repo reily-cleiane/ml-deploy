@@ -1,17 +1,25 @@
 """
-Source code for IntentClassifier.
+This script works as a module and as a CLI tool.
+To use it as a module, you can do:
+```
+from intent_classifier import IntentClassifier
 
-python intent_classifier.py train \
-    --config="confusion_config.yml" \
-    --examples_file="confusion_examples.yml" \
-    --save_model="models/confusion-clf-v1/"
+classifier = IntentClassifier(config="confusion_config.yml", examples_file="confusion_examples.yml")
+classifier.train(save_model="models/confusion-clf-v1/")
+```
+To use it as a CLI tool, you can do:
+```
+python tools/intent_classifier.py train \
+    --config="tools/confusion/confusion_config.yml" \
+    --examples_file="tools/confusion/confusion_examples.yml" \
+    --save_model="tools/confusion/confusion-clf-v1.keras"
 
-python intent_classifier.py predict 
-    --load_model="models/confusion-clf-v1/" \
-    --input_text="Não tenho certeza sobre isso"
+python tools/intent_classifier.py predict \
+    --load_model="tools/confusion/confusion-clf-v1.keras" \
+    --input_text="oi"
     
-
 python intent_classifier.py cross_validation --n_splits=5
+```
 """
 # instalar alguns pacotes auxiliares
 
@@ -33,6 +41,8 @@ import tensorflow as tf
 from tensorflow.keras import regularizers
 import tensorflow_text
 import tensorflow_hub as hub
+from tensorflow.keras.saving import register_keras_serializable
+
 
 import wandb
 from wandb.integration.keras import WandbMetricsLogger, WandbEvalCallback # WandbModelCheckpoint
@@ -42,7 +52,7 @@ PUNCTUATION_TOKENS = {
     "?": "QUESTION_MARK",
 }
 
-
+@register_keras_serializable()
 class HubLayer(tf.keras.layers.Layer):
     def __init__(self, hub_url, trainable=False, **kwargs):
         super(HubLayer, self).__init__(**kwargs)
@@ -56,10 +66,11 @@ class Config:
     dataset_name: str
     codes : List[str] = None
     architecture: str = "v0.1.5"
+    task: str = "undefined"
     stop_words_file: Optional[str] = None
     wandb_project: Optional[str] = None
     min_words: int = 1
-    embedding_model: Union[str, List[str]] = 'https://www.kaggle.com/models/google/universal-sentence-encoder/tensorFlow2/multilingual/2'
+    embedding_model: Union[str, List[str]] = 'https://tfhub.dev/google/universal-sentence-encoder-multilingual/3'
     sent_hl_units: Union[int, List[int]] = 32
     sent_dropout: Union[float, List[float]] = 0.1
     l1_reg: float = 0.01
@@ -98,9 +109,10 @@ class IntentClassifier:
               self.wandb_run = wandb.init(project=self.config.wandb_project, 
                                           config=self.config.__dict__)
               # Create and log artifact
-              artifact = wandb.Artifact("my_dataset", type="dataset")
-              artifact.add_file(examples_file) # Assuming 'examples_file' is the dataset file
-              self.wandb_run.log_artifact(artifact)
+              if self.examples_file is not None:
+                  artifact = wandb.Artifact("my_dataset", type="dataset")
+                  artifact.add_file(examples_file) # Assuming 'examples_file' is the dataset file
+                  self.wandb_run.log_artifact(artifact)
 
     def finish_wandb(self):
         if self.config.wandb_project and self.wandb_run:
@@ -219,16 +231,16 @@ class IntentClassifier:
         # Set the random seed for reproducibility
         seed = 42
         tf.random.set_seed(seed)  # Assuming you have a random_seed in your config
-
         # Extract config values
         sent_hl_units, sent_dropout = config.sent_hl_units, config.sent_dropout
         l1_reg, l2_reg = config.l1_reg, config.l2_reg
         output_size = len(self.codes)
-
         # Build model
         initializer = tf.keras.initializers.GlorotUniform(seed=seed)  # Set seed in initializer
         text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name="inputs")
+        # Sentence encoder
         encoder = HubLayer(config.embedding_model, trainable=False, name="sent_encoder")(text_input)
+        # Hidden layer
         sent_hl = tf.keras.layers.Dense(sent_hl_units,
                                         kernel_initializer=initializer,
                                         kernel_regularizer=regularizers.l1_l2(l1=l1_reg, l2=l2_reg),
@@ -237,6 +249,7 @@ class IntentClassifier:
         sent_hl_norm = tf.keras.layers.BatchNormalization()(sent_hl)  # Add batch normalization
         sent_hl_activation = tf.keras.layers.Activation('relu')(sent_hl_norm)  # Activation after batch normalization
         sent_hl_dropout = tf.keras.layers.Dropout(sent_dropout, seed=seed)(sent_hl_activation)  # Set seed in dropout
+        # Output layer
         sent_output = tf.keras.layers.Dense(output_size,
                                             kernel_initializer=initializer,
                                             activation='softmax',
@@ -302,35 +315,44 @@ class IntentClassifier:
             f.write(yaml.dump(self.config.__dict__))
         print(f"Model saved to {path}.")
 
-    def predict(self, input_text, true_labels: list = None,
-                    get_certainty: bool = False, log_to_wandb: bool = False):
+    def predict(self, input_text, true_labels: list = None, log_to_wandb: bool = False):
         self.config.task = "predict"  # Set the task to "predict"
-        if isinstance(input_text, str):
-            input_text = [input_text]  # Convert single string to a list
+        original_input_is_string = isinstance(input_text, str)
+        if original_input_is_string:
+            input_text_list = [input_text]  # Convert single string to a list for processing
+        else:
+            input_text_list = input_text
         # Preprocess each string in the list
-        preprocessed_texts = [self.preprocess_text(tf.constant(text)) for text in input_text]
+        preprocessed_texts = [self.preprocess_text(tf.constant(text)) for text in input_text_list]
         preprocessed_texts = tf.concat(preprocessed_texts, axis=0) # Stack the tensors into a single tensor
-        # Predict intents for all strings at once
-        preds = self.model.predict(preprocessed_texts)
-        intents = self.onehot_encoder.inverse_transform(preds)[:, 0].tolist() # Extract intents and convert to list
+        # Predict probabilities for all strings at once
+        all_probs = self.model.predict(preprocessed_texts)
+        results = []
+        predicted_labels_for_log = []
+        for i in range(all_probs.shape[0]):
+            current_probs = all_probs[i] # Probabilities for the i-th input text
+            # Determine the intent name with the highest probability
+            highest_prob_idx = np.argmax(current_probs)
+            highest_prob_intent_name = self.codes[highest_prob_idx]
+            predicted_labels_for_log.append(highest_prob_intent_name)
+            # Create a dictionary of probabilities for each intent name
+            probs_dict = {code: float(current_probs[j]) for j, code in enumerate(self.codes)}
+            results.append((highest_prob_intent_name, probs_dict))
         # Log to Wandb if requested
         if log_to_wandb and self.config.wandb_project:
             # Get the current run ID if it exists, otherwise start a new run
             run_id = wandb.run.id if wandb.run else wandb.util.generate_id()
             # Initialize wandb with the run ID
             with wandb.init(project=self.config.wandb_project, id=run_id, resume="allow"):
-                predicted_labels = intents
                 wandb.log({
-                    "inputs": input_text,
+                    "inputs": input_text_list, # Log the list of original input texts
                     "true_labels": true_labels,
-                    "predictions": predicted_labels
+                    "predictions": predicted_labels_for_log # Use the extracted list of highest prob intents
                 })
-        # Handle get_certainty
-        if get_certainty:
-            if get_certainty == "all":
-                return intents, [{code: pred[i] for i, code in enumerate(self.codes)} for pred in preds] # Return list of dictionaries for each text
-            return intents, [max(pred) for pred in preds] # Return list of certainties for each text
-        return intents
+        # Return a single tuple if the original input was a string, otherwise a list of tuples
+        if original_input_is_string:
+            return results[0]
+        return results
 
     def cross_validation(self, n_splits: int = 3):
         assert self.examples_file is not None, "examples_file must be provided when the IntentClassifier was created."
@@ -378,29 +400,32 @@ class IntentClassifier:
             self.wandb_run.finish()
         return results
 
+
+# This script works as a module and as a CLI tool
 if __name__ == "__main__":
     import fire
-    
+    # Instead of fire.Fire(IntentClassifier),
+    # Define the functions to be used by Fire CLI so that 
+    #  it's not cluttered with all the functions in the IntentClassifier class
     def train(config: str, examples_file: str, save_model: str):
         """Train the model with the given configuration and examples."""
         classifier = IntentClassifier(config=config, examples_file=examples_file)
         classifier.train(save_model=save_model)
-        return classifier
-    
+        print("Training completed successfully!")
     def predict(load_model: str, input_text: str):
         """Make predictions using a trained model."""
         classifier = IntentClassifier(load_model=load_model)
-        return classifier.predict(input_text)
-    
+        predictions = classifier.predict(input_text)
+        print(f"Predictions: {predictions}")
     def cross_validation(n_splits: int = 3):
         """Run cross-validation on the model."""
         classifier = IntentClassifier()
-        return classifier.cross_validation(n_splits=n_splits)
-    
+        results = classifier.cross_validation(n_splits=n_splits)
+        print("Cross-validation completed successfully!")
     fire.Fire({
         'train': train,
         'predict': predict,
         'cross_validation': cross_validation
-    })
+    }, serialize=False)
 
 

@@ -27,6 +27,7 @@ ml-deploy-test/
 │   ├── models/             # Trained models
 │   │   └── ...                 
 │   └── classifier_wrapper.py  # IntentClassifier implementation
+├── tests/
 ├── requirements.txt         
 └── .gitignore              # Git ignore rules
 ```
@@ -39,21 +40,18 @@ ml-deploy-test/
 git clone https://github.com/adaj/ml-deploy-test.git
 cd ml-deploy-test
 
-conda create -n mlops python=3.10
+conda create -n ml-deploy-test python=3.10
+
+pip install -r requirements.txt
 ```
 
 #### 2. Train/Load IntentClassifier Model
 
 ```bash
-pip install - requirements.txt
-```
-
-
-```bash
 cd tools
-python intent_classifier.py train --config="config.yml" \
-    --examples_file="confusion_examples.yml" \
-    --save_model="confusion-clf-v1.keras"
+python tools/intent_classifier.py train \
+  --config="tools/confusion/confusion_config.yml" \
+  --examples_file="tools/confusion/confusion_examples.yml" \ --save_model="tools/confusion/confusion-clf-v1.keras"
 ```
 
 #### 3. Configure MongoDB Atlas 🌱

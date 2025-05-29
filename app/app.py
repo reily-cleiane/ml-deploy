@@ -1,28 +1,85 @@
-from fastapi import FastAPI, HTTPException, Depends
+import os
+import time
+import traceback
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Depends, Request
 from db.engine import get_mongo_collection
 from db.models import TextRequest, PredictionResult
 from tools.intent_classifier import IntentClassifier, Config
-from app.utils import verify_token
+from fastapi.middleware.cors import CORSMiddleware
 
 import logging
-logging.basicConfig(level=logging.INFO)
+
+# Configure detailed logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app.log')  # Also log to file
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Read environment mode (defaults to prod for safety)
+ENV = os.getenv("ENV", "prod").lower()
+logger.info(f"Running in {ENV} mode")
+
+"""
+Authentication Logic
+"""
+
+async def conditional_auth():
+    """Returns user based on environment mode"""
+    if ENV == "dev":
+        logger.info("Development mode: skipping authentication")
+        return "dev_user"
+    else:
+        # Import and use real authentication in production
+        try:
+            from app.utils import verify_token
+            return await verify_token()
+        except Exception as e:
+            logger.error(f"Authentication failed: {str(e)}")
+            raise HTTPException(status_code=401, detail="Authentication failed")
 
 """
 FastAPI Setup
 """
 
-with open('README.md', 'r') as f:
+with open('app/README.md', 'r') as f:
     description = f.read()
 
 app = FastAPI(
-    title="Intent Classifier API",
+    # title="Intent Classifier API",
     description=description,
     version="1.0.0",
     docs_url="/docs",        # Swagger UI
     redoc_url="/redoc",      # ReDoc
     root_path="/intents"     # Root path for the API (URL: http://localhost:8000/intents)
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    
+    # Log incoming request
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    if request.method == "POST":
+        # Note: we can't log the body here easily without consuming it
+        logger.info(f"Request headers: {dict(request.headers)}")
+    
+    response = await call_next(request)
+    
+    # Log response
+    process_time = time.time() - start_time
+    logger.info(f"Response: {response.status_code} - Time: {process_time:.3f}s")
+    
+    return response
 
 # Lista de origens permitidas (pode ser seu domínio, localhost, etc.)
 origins = [
@@ -42,12 +99,23 @@ app.add_middleware(
     # Em produção: evite "*" e especifique os domínios confiáveis.
 )
 
-MODELS = {
-    "confusion": IntentClassifier(load_model="models/confusion_classifier/")
-}
+# Initialize models with error handling
+MODELS = {}
+try:
+    logger.info("Loading confusion model...")
+    MODELS["confusion"] = IntentClassifier(load_model="tools/confusion/confusion-clf-v1.keras")
+    logger.info("Confusion model loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load confusion model: {str(e)}")
+    logger.error(traceback.format_exc())
 
-collection = get_mongo_collection("intent_logs")
-
+# Initialize database connection
+try:
+    collection = get_mongo_collection("intent_logs")
+    logger.info("Database connection established")
+except Exception as e:
+    logger.error(f"Failed to connect to database: {str(e)}")
+    logger.error(traceback.format_exc())
 
 """
 Routes
@@ -56,26 +124,71 @@ Routes
 # GET http://localhost:8000/intents/
 @app.get("/", tags=["Root"])
 async def read_root():
+    logger.info("Root endpoint accessed")
     return {
-        "message": "Intent Classifier API is running. Check /redoc for more info."
+        "message": f"Intent Classifier API is running in {ENV} mode. Check /redoc for more info."
     }
 
 # POST http://localhost:8000/intents/confusion
 @app.post("/confusion", response_model=PredictionResult)
-async def predict_confusion(request: TextRequest, owner=Depends(verify_token)):
-    logger.info(f"Requisição autenticada por: {owner}")
+async def predict_confusion(request: TextRequest, owner=Depends(conditional_auth)):
+    logger.info(f"Confusion prediction request from user: {owner}")
+    logger.info(f"Input text: '{request.text}'")
+    
     try:
-        pred = MODELS["confusion"].predict(request.text, get_certainty=True)
-        prediction, certainty = pred['label'], pred['certainty']
-
+        # Check if model is loaded
+        if "confusion" not in MODELS:
+            logger.error("Confusion model not loaded")
+            raise HTTPException(status_code=500, detail="Model not available")
+        
+        # Make prediction
+        logger.info("Making prediction...")
+        pred_result = MODELS["confusion"].predict(request.text, get_certainty=True)
+        logger.info(f"Raw prediction result: {pred_result}")
+        logger.info(f"Prediction result type: {type(pred_result)}")
+        
+        # Handle the prediction result - it returns a tuple when get_certainty=True
+        if isinstance(pred_result, tuple) and len(pred_result) == 2:
+            intents, certainties = pred_result
+            prediction = intents[0] if isinstance(intents, list) else intents
+            certainty = certainties[0] if isinstance(certainties, list) else certainties
+        elif isinstance(pred_result, dict):
+            prediction = pred_result.get('label') or pred_result.get('prediction')
+            certainty = pred_result.get('certainty')
+        else:
+            logger.error(f"Unexpected prediction result format: {pred_result}")
+            raise ValueError(f"Unexpected prediction result format: {type(pred_result)}")
+        
+        logger.info(f"Processed prediction: {prediction}, certainty: {certainty}")
+        # Create log entry
         log = {
             "text": request.text,
             "prediction": prediction,
-            "certainty": certainty,
+            "certainty": float(certainty) if certainty is not None else None,
             "owner": owner
         }
-        collection.insert_one(log)
+        # Save to database
+        try:
+            collection.insert_one(log)
+            logger.info("Prediction logged to database")
+        except Exception as e:
+            logger.error(f"Failed to log to database: {str(e)}")
+            # Don't fail the request if logging fails
 
-        return PredictionResult(text=request.text, prediction=prediction, certainty=certainty)
+        result = PredictionResult(
+            text=request.text, 
+            prediction=prediction, 
+            certainty=float(certainty) if certainty is not None else None
+        )
+        logger.info(f"Returning result: {result}")
+        return result
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in predict_confusion: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        logger.error(f"Full traceback:")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+

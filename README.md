@@ -49,7 +49,6 @@ pip install -r requirements.txt
 #### 2. Train/Load IntentClassifier Model
 
 ```bash
-cd tools
 python tools/intent_classifier.py train \
   --config="tools/confusion/confusion_config.yml" \
   --examples_file="tools/confusion/confusion_examples.yml" \ --save_model="tools/confusion/confusion-clf-v1.keras"
@@ -65,12 +64,13 @@ Create a free MongoDB Atlas cluster:
 5. Copy the connection string (e.g., mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname) 
 
 
-
 #### 4. Prepare your environment
 
 Set the connection string as an environment variable MONGO_URI in your `.env`, taken from your MongoDB Atlas cluster.
 
-Create your API token (requires authenticated access to MongoDB cluster):
+Set the WANDB_API_KEY to keep track of your model's info.
+
+If you set ENV=prod, create your API token (requires authenticated access to MongoDB cluster):
 ```bash
 # Criar um novo token
 python db/tokens.py create --owner="alguem" --expires_in_days=365
@@ -79,16 +79,16 @@ python db/tokens.py create --owner="alguem" --expires_in_days=365
 python db/tokens.py read_all
 ```
 
+This token has to be added in the header of API requests.
 
-#### 6. Build and Run with Docker 🐳
+If you want to run the app locally:
 
-```bash
-docker-compose up --build
+```python
+uvicorn app.app:app --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at http://localhost:8000.
-
-#### 7. Expose API with ngrok 📢
+Check http://localhost:8000.
+#### 6. Optional: Expose API with ngrok 📢
 
 Install ngrok:
 ```bash
@@ -107,13 +107,27 @@ ngrok http 8000
 
 You’ll receive a public URL like `https://abc123.ngrok.io.
 
+#### 7. Build and Run with Docker 🐳
+
+```bash
+docker compose up --build --detach
+```
+
+Check the containers and logs:
+```bash
+docker ps -a
+docker compose logs -f
+```
+
+After it's up, the API should be available at http://localhost:8000.
+
 #### 8. API Usage 🧪
 
-`POST /predict`
+`POST /confusion`
 
 Make a prediction:
 ```bash
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:8000/confusion \
   -H "Content-Type: application/json" \
   -d '{"text": "Não entendo como isso é possível"}'
 ```

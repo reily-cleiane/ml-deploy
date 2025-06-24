@@ -13,6 +13,7 @@ services:
       - MONGO_URI=#
       - MONGO_DB=ml_deploy_test
       - WANDB_API_KEY=#
+      - WANDB_MODEL_URL=#
 
   streamlit:
     build:

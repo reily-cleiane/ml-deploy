@@ -8,6 +8,4 @@ wandb login --relogin "$WANDB_API_KEY"
 # atenção ao path exato do artifact no seu projeto W&B!
 wandb artifact get "$WANDB_MODEL_URL":latest -p /app/model
 
-# ao final, /app/model/model.keras estará disponível
-# executa o comando padrão
 exec "$@"

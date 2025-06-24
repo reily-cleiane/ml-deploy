@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /ml-deploy-test
 
@@ -6,7 +6,7 @@ WORKDIR /ml-deploy-test
 COPY requirements.txt requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Copy the rest of the application code
 COPY . .

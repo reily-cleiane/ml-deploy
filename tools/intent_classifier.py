@@ -314,6 +314,15 @@ class IntentClassifier:
         with open(config_path, 'w') as f:
             f.write(yaml.dump(self.config.__dict__))
         print(f"Model saved to {path}.")
+        if self.config.wandb_project:
+            # Crie e envie o artifact
+            artifact = wandb.Artifact(
+                name=f"{self.config.dataset_name}-clf-v1",
+                type="model",
+                description="Modelo Keras v1 para classificação de intenção"
+            ).add_file(path)
+            self.wandb_run.log_artifact(artifact)
+            self.wandb_run.finish()
 
     def predict(self, input_text, true_labels: list = None, log_to_wandb: bool = False):
         self.config.task = "predict"  # Set the task to "predict"

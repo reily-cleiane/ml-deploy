@@ -1,6 +1,6 @@
 version: "3.8"
 services:
-  backend:
+  app:
     build:
       context: .
       dockerfile: app/Dockerfile.app
@@ -8,17 +8,20 @@ services:
       - "8000:8000"
     depends_on:
       - mongo
-    env_file:
-      - .env
+    environment:
+      - ENV=dev
+      - MONGO_URI=#
+      - MONGO_DB=ml_deploy_test
+      - WANDB_API_KEY=#
 
-  frontend:
+  streamlit:
     build:
       context: .
       dockerfile: app/Dockerfile.streamlit
     ports:
       - "8501:8501"
     depends_on:
-      - backend
+      - app
     environment:
       - API_BASE_URL=http://backend:8000/intents
 

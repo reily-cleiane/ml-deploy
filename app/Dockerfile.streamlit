@@ -4,12 +4,7 @@ WORKDIR /ml-deploy-test
 
 # Copy requirements first to leverage Docker cache. 
 # This assumes streamlit and its dependencies (requests, pandas, plotly) are in the root requirements.txt
-# If not, you might need a separate requirements_streamlit.txt or install them directly.
-COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Alternatively, if Streamlit and its direct dependencies are few, install them directly:
-# RUN pip install --no-cache-dir streamlit requests pandas plotly
+RUN pip install --no-cache-dir streamlit requests pandas plotly
 
 # Copy the specific application files needed for the Streamlit app
 # The `app/` directory from the build context (project root) is copied into 

@@ -14,8 +14,10 @@ jobs:
     # Segredos viram variáveis de ambiente que o docker-compose consome
     env:
       MONGO_URI: ${{ secrets.MONGO_URI }}
+      MONGO_DB: ${{ secrets.MONGO_DB }}
       WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-      ENV: ci          # força modo CI no app
+      WANDB_MODEL_URL: ${{ secrets.WANDB_MODEL_URL }}
+      ENV: dev
 
     steps:
 
@@ -28,7 +30,7 @@ jobs:
 
       # Roda todos os tests/ dentro do serviço backend
       - name: Run unit tests
-        run: docker compose run --rm backend python -m unittest discover -s tests -v
+        run: docker compose run --rm app python -m unittest discover -s tests -v
 
       # Limpa tudo mesmo se algum passo falhar
       - name: Clean up

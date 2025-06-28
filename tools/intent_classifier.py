@@ -91,10 +91,49 @@ def remove_duplicate_words(text):
     return ' '.join(result)
 
 
+def fetch_model_from_wandb(url: str) -> str:
+    """Download a model artifact from W&B or return local path.
+
+    If ``url`` is a local file path or ``file://`` URL, it is returned as-is.
+    Otherwise the artifact is downloaded via the W&B API using the key from
+    ``WANDB_API_KEY`` and the path to the downloaded model file is returned.
+    """
+    # Support file:// URLs and plain local paths for offline tests
+    if url.startswith("file://"):
+        local = url[7:]
+        if os.path.exists(local):
+            return local
+    if os.path.exists(url):
+        return url
+
+    api_key = os.environ.get("WANDB_API_KEY")
+    if not api_key or len(api_key) != 40:
+        raise ValueError("WANDB_API_KEY is required and must be 40 characters long")
+
+    wandb.login(key=api_key)
+    api = wandb.Api()
+    if ":" not in url:
+        url = f"{url}:latest"
+    artifact = api.artifact(url)
+    path = artifact.download()
+    # Try to locate a Keras model file inside the downloaded directory
+    for fname in os.listdir(path):
+        if fname.endswith(".keras") or fname.endswith(".h5"):
+            return os.path.join(path, fname)
+    return path
+
+
 class IntentClassifier:
 
     def __init__(self, config = None, load_model = None, examples_file = None, handle_punctuation = False):
         self.handle_punctuation = handle_punctuation
+        if load_model is None:
+            env_url = os.environ.get("WANDB_MODEL_URL")
+            if env_url:
+                try:
+                    load_model = fetch_model_from_wandb(env_url)
+                except Exception as exc:
+                    print(f"Failed to fetch model from {env_url}: {exc}")
         # Load config
         self._load_config(config, load_model, examples_file)
         # Load intents from the examples file if provided

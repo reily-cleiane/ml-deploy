@@ -10,10 +10,10 @@ services:
       - mongo
     environment:
       - ENV=dev
-      - MONGO_URI=#
-      - MONGO_DB=ml_deploy_test
-      - WANDB_API_KEY=#
-      - WANDB_MODEL_URL=#
+      - MONGO_URI=${MONGO_URI}
+      - MONGO_DB=${MONGO_DB}
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - WANDB_MODEL_URL=${WANDB_MODEL_URL}
 
   streamlit:
     build:

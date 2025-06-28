@@ -1,6 +1,10 @@
 import os
+import sys
 import unittest
 import numpy as np
+import yaml
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tools.intent_classifier import IntentClassifier, Config
 
@@ -51,19 +55,48 @@ class IntentClassifierTest(unittest.TestCase):
     # One-hot encoder configurado corretamente
     # -------------------------------------------------------
     def test_one_hot_encoder(self):
-        if os.getenv("WANDB_MODEL_URL"):
-            self.skipTest("One-hot encoder check only for dummy model")
         enc = self.clf.onehot_encoder
-        foo_vec = enc.transform([["foo"]]).toarray()[0]
-        bar_vec = enc.transform([["bar"]]).toarray()[0]
-        np.testing.assert_array_equal(foo_vec, np.array([1, 0]))
-        np.testing.assert_array_equal(bar_vec, np.array([0, 1]))
+        codes = list(self.clf.codes)
+        for idx, code in enumerate(codes):
+            vec = enc.transform([[code]]).toarray()[0]
+            self.assertEqual(len(vec), len(codes))
+            # the vector should be one-hot with 1 at the correct index
+            self.assertAlmostEqual(vec[idx], 1.0)
+            self.assertTrue(((vec == 0) | (vec == 1)).all())
+            decoded = enc.inverse_transform([vec])[0][0]
+            self.assertEqual(decoded, code)
 
     def test_env_model_loaded(self):
         if os.getenv("WANDB_MODEL_URL"):
             self.assertIsNotNone(self.clf.model)
         else:
             self.skipTest("WANDB_MODEL_URL not set")
+
+    def test_model_accuracy_easy_examples(self):
+        url = os.getenv("WANDB_MODEL_URL")
+        if not url:
+            self.skipTest("WANDB_MODEL_URL not set")
+
+        examples_path = os.path.join(os.path.dirname(__file__), "..", "tools", "confusion", "confusion_examples.yml")
+        with open(examples_path, "r") as f:
+            data = yaml.safe_load(f)
+
+        samples = []
+        for intent_block in data:
+            for text in intent_block["examples"]:
+                samples.append((text, intent_block["intent"]))
+                if len(samples) >= 10:
+                    break
+            if len(samples) >= 10:
+                break
+
+        texts = [t for t, _ in samples]
+        labels = [l for _, l in samples]
+        preds = self.clf.predict(texts)
+        pred_labels = [p[0] for p in preds]
+
+        accuracy = sum(p == l for p, l in zip(pred_labels, labels)) / len(labels)
+        self.assertGreaterEqual(accuracy, 0.5)
 
 
 if __name__ == "__main__":       # Permite `python test_intent_classifier.py`

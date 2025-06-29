@@ -143,6 +143,25 @@ Response:
 Access the interactive Swagger UI at `http://localhost:8000/docs` or via your ngrok URL.
 
 
+## 🛡️ Boas Práticas de MLOps
+
+Este projeto demonstra algumas práticas essenciais de MLOps para garantir reproduzibilidade e automação:
+
+- **Imagens Docker**: a API e a interface Streamlit são distribuídas em containers isolados. O `Dockerfile.app` e `Dockerfile.streamlit` definem dependências e comandos.
+- **Orquestração com Docker Compose**: o arquivo `docker-compose.yml` permite iniciar a API, o Streamlit e o MongoDB de forma integrada.
+- **Variáveis de ambiente**: URIs, credenciais e o caminho do modelo são configurados via variáveis de ambiente ou `.env`.
+- **Testes automatizados**: os testes em `tests/` validam o `IntentClassifier` e rodam no fluxo de CI.
+- **Download automático de modelo**: `fetch_model.sh` obtém o modelo armazenado no Weights & Biases sempre que o container inicia.
+- **Logs em MongoDB**: previsões são registradas para análise posterior.
+
+### Workflows do GitHub Actions
+
+A automação do ciclo de vida conta com dois workflows em `.github/workflows`:
+
+1. **ci.yml** – constrói as imagens do `docker-compose.yml` e executa os testes unitários a cada push ou pull request para `main`, usando os segredos como variáveis de ambiente.
+2. **docker-publish.yml** – publica a imagem da API no Docker Hub após push para `main` ou execução manual. A imagem é construída com `docker/build-push-action` e enviada usando `DOCKER_USERNAME` e `DOCKER_PASSWORD`.
+
+
 ## 🛠️ Development Notes
 
 * The IntentClassifier can be trained (`IntentClassifier(config, examples_file).train(save_model="model-0.1")`) 

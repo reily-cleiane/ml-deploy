@@ -169,7 +169,11 @@ class IntentClassifier:
             if load_model is not None:
                 self.model = tf.keras.models.load_model(load_model)
                 print(f"Loaded keras model from {load_model}.")
-                config_path = load_model.replace(".keras", "_config.yml") #os.path.join(os.path.dirname(load_model), f"{self.config.dataset_name}_config.yml")
+                config_path = load_model.replace(".keras", "_config.yml")
+                if not os.path.exists(config_path):
+                    alt_path = os.path.join("tools", "models", os.path.basename(config_path))
+                    if os.path.exists(alt_path):
+                        config_path = alt_path
                 with open(config_path, 'r') as f:
                     self.config = Config(**yaml.safe_load(f))
             else:

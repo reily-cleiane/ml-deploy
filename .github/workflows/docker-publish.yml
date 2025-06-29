@@ -10,6 +10,7 @@ name: Publish Docker Image
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       contents: read
       packages: write

@@ -7,7 +7,8 @@ if [[ -n "$WANDB_MODEL_URL" && -n "$WANDB_API_KEY" ]]; then
         echo "Logging into Weights & Biases..."
         wandb login --relogin "$WANDB_API_KEY"
         echo "Downloading model artifact $WANDB_MODEL_URL"
-        wandb artifact get "$WANDB_MODEL_URL":latest -p /app/model
+        mkdir -p /app/model
+        wandb artifact get "$WANDB_MODEL_URL":latest --root /app/model
     else
         echo "WANDB_API_KEY appears invalid; skipping artifact download" >&2
     fi

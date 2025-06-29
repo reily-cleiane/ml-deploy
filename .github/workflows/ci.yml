@@ -11,6 +11,7 @@ name: CI
 jobs:
   compose-tests:
     runs-on: ubuntu-latest
+    environment: dev
 
     # Segredos viram variáveis de ambiente que o docker-compose consome
     env:

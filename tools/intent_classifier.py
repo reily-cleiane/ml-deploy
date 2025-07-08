@@ -363,7 +363,8 @@ class IntentClassifier:
                 name=f"{self.config.dataset_name}-clf-v1",
                 type="model",
                 description="Modelo Keras v1 para classificação de intenção"
-            ).add_file(path)
+            )
+            artifact.add_file(path)
             self.wandb_run.log_artifact(artifact)
             self.wandb_run.finish()
 

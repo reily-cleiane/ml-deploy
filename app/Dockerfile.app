@@ -31,5 +31,5 @@ EXPOSE 8000
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", \
      "-w", "4", \
      "-b", "0.0.0.0:8000", \
-     "app.main:app"]
+     "app.app:app"]
 

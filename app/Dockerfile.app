@@ -24,12 +24,12 @@ COPY . .
 EXPOSE 8000
 
 # # Command to run the application
-# CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
 # Alternatively:
 # Better utilization of multiple CPUs and fault isolation — if a worker crashes, Gunicorn restarts only that one.
 # Can handle more simultaneous requests (via internal round-robin).
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", \
-     "-w", "4", \
-     "-b", "0.0.0.0:8000", \
-     "app.app:app"]
+# CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", \
+#     "-w", "2", \
+#     "-b", "0.0.0.0:8000", \
+#     "app.app:app"]
 

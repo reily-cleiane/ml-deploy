@@ -1,37 +1,29 @@
-version: "3.8"
+name: intent-classifier
 services:
   app:
     build:
       context: .
-      dockerfile: app/Dockerfile.app
+      dockerfile: app/app.Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      - mongo
     environment:
       - ENV=dev
       - MONGO_URI=${MONGO_URI}
       - MONGO_DB=${MONGO_DB}
       - WANDB_API_KEY=${WANDB_API_KEY}
       - WANDB_MODEL_URL=${WANDB_MODEL_URL}
-
-  streamlit:
-    build:
-      context: .
-      dockerfile: app/Dockerfile.streamlit
-    ports:
-      - "8501:8501"
+      # OpenTelemetry environment variables
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=intent-classifier-app
+      - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
+      - OTEL_PYTHON_LOG_LEVEL=DEBUG
     depends_on:
-      - app
-    environment:
-      - API_BASE_URL=http://backend:8000/intents
+      - lgtm
 
-  mongo:
-    image: mongo:latest
+  lgtm:
+    image: grafana/otel-lgtm:latest
     ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-volumes:
-  mongo_data:
+      - "3000:3000" # Grafana
+      - "3100:3100" # Loki
+      - "9090:9090" # Prometheus
+      - "4317:4317" # Tempo OTLP gRPC

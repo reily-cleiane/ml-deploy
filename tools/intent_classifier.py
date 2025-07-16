@@ -12,10 +12,10 @@ To use it as a CLI tool, you can do:
 python tools/intent_classifier.py train \
     --config="tools/confusion/confusion_config.yml" \
     --examples_file="tools/confusion/confusion_examples.yml" \
-    --save_model="tools/confusion/confusion-clf-v1.keras"
+    --save_model="tools/models/confusion-clf-v1.keras"
 
 python tools/intent_classifier.py predict \
-    --load_model="tools/confusion/confusion-clf-v1.keras" \
+    --load_model="tools/models/confusion-clf-v1.keras" \
     --input_text="oi"
     
 python intent_classifier.py cross_validation --n_splits=5

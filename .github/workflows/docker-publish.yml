@@ -1,21 +1,26 @@
-# .github/workflows/docker-publish.yml
+# .github/workflows/deploy.yml
 ---
-name: Publish Docker Image
+name: Deploy
 
 'on':
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Test"]
+    types:
+      - completed
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     environment: dev
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -28,9 +33,11 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push image
+        id: build-and-push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: app/Dockerfile.app
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/intent-classifier:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/intent-classifier:${{ github.sha }}
+          platforms: linux/amd64,linux/arm64

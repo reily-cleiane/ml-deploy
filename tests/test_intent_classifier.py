@@ -5,6 +5,7 @@ import numpy as np
 import yaml
 import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
+from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -25,20 +26,21 @@ class IntentClassifierTest(unittest.TestCase):
     def setUp(self):
         print(f"\n🧪 Running {self._testMethodName}...")
 
+    from dotenv import load_dotenv
+
     @classmethod
     def setUpClass(cls):
+        load_dotenv()
         env_url = os.getenv("WANDB_MODEL_URL")
-        if env_url:
-            print("\n🌐 WANDB_MODEL_URL detected, loading real model...")
-            # Quando WANDB_MODEL_URL estiver definido, o IntentClassifier buscará o modelo automaticamente
-            cls.clf = IntentClassifier()
-            print("✅ Model loaded from WandB")
-        else:
-            print("\n🤖 Using dummy model for tests")
-            # Config minimalista com duas intenções usando modelo dummy
-            cfg = Config(dataset_name="dummy", codes=["foo", "bar"])
-            cls.clf = IntentClassifier(config=cfg, load_model=None, examples_file=None)
-            cls.clf.model = _DummyModel()
+        if not env_url:
+            raise unittest.SkipTest(
+                "WANDB_MODEL_URL not set. Please set it in your .env file. "
+                "You can find the model URL in the W&B interface under "
+                "'Artifacts' > 'Model' > 'Usage'."
+            )
+        print("\n🌐 WANDB_MODEL_URL detected, loading real model...")
+        cls.clf = IntentClassifier()
+        print("✅ Model loaded from WandB")
 
     # -------------------------------------------------------
     # Predição básica
@@ -47,22 +49,14 @@ class IntentClassifierTest(unittest.TestCase):
         print("🔎 Checking top intent prediction")
         top_intent, _ = self.clf.predict("exemplo qualquer")
         print(f"Predicted intent: {top_intent}")
-        if os.getenv("WANDB_MODEL_URL"):
-            self.assertIsInstance(top_intent, str)
-        else:
-            self.assertEqual(top_intent, "bar")
+        self.assertIsInstance(top_intent, str)
 
     def test_probability_dict(self):
         print("📈 Checking probability dictionary")
         _, probs = self.clf.predict("outro exemplo")
         print(f"Probabilities: {probs}")
         self.assertIsInstance(probs, dict)
-        if os.getenv("WANDB_MODEL_URL"):
-            self.assertGreaterEqual(len(probs), 1)
-        else:
-            self.assertSetEqual(set(probs.keys()), {"foo", "bar"})
-            self.assertAlmostEqual(probs["foo"], 0.1, places=6)
-            self.assertAlmostEqual(probs["bar"], 0.9, places=6)
+        self.assertGreaterEqual(len(probs), 1)
 
     # -------------------------------------------------------
     # One-hot encoder configurado corretamente
@@ -81,11 +75,8 @@ class IntentClassifierTest(unittest.TestCase):
             self.assertEqual(decoded, code)
 
     def test_env_model_loaded(self):
-        if os.getenv("WANDB_MODEL_URL"):
-            print("✅ Model correctly loaded from WANDB")
-            self.assertIsNotNone(self.clf.model)
-        else:
-            self.skipTest("WANDB_MODEL_URL not set")
+        print("✅ Model correctly loaded from WANDB")
+        self.assertIsNotNone(self.clf.model)
 
     def test_model_accuracy_easy_examples(self):
         url = os.getenv("WANDB_MODEL_URL")

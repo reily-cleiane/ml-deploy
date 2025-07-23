@@ -23,6 +23,7 @@ python intent_classifier.py cross_validation --n_splits=5
 """
 # instalar alguns pacotes auxiliares
 
+import csv
 import os
 from pathlib import Path
 from typing import List, Optional, Union
@@ -180,18 +181,44 @@ class IntentClassifier:
                 raise ValueError("config must be a path to a YAML file, a Config object, or None.")
         else:
             raise ValueError("config must be a path to a YAML file, a Config object, or None.")
+    
+    def _load_examples_csv(self, examples_file: str):
+        self.examples = []
+        with open(examples_file, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                self.examples.append({
+                    "intent": row["tipo"],
+                    "text": row["texto"]
+                })
+        print(f"Loaded {len(self.examples)} examples from CSV: {examples_file}")
+    
     def _load_intents(self, examples_file):
         self.examples_file = examples_file
         if examples_file is not None:
             pprint(f"Loading intents from {examples_file}...")
-            with open(examples_file, 'r') as f:
-                self.intents_data = yaml.safe_load(f)
-            # Preprocess intents
+            ext = os.path.splitext(examples_file)[-1].lower()
             input_text = []
             labels = []
-            for i in self.intents_data:
-                input_text += i['examples']
-                labels += [i['intent']]*len(i['examples'])
+
+            if ext in [".yml", ".yaml"]:
+                with open(examples_file, 'r', encoding='utf-8') as f:
+                    self.intents_data = yaml.safe_load(f)
+                for i in self.intents_data:
+                    input_text += i['examples']
+                    labels += [i['intent']] * len(i['examples'])
+
+            elif ext == ".csv":
+                with open(examples_file, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    self.intents_data = []  # Armazena por compatibilidade
+                    for row in reader:
+                        text = row['texto']
+                        intent = row['tipo']
+                        input_text.append(text)
+                        labels.append(intent)
+                        self.intents_data.append({'intent': intent, 'text': text})
+
             input_text = np.array(input_text)
             labels = np.array(labels)
             # Preprocess input_text

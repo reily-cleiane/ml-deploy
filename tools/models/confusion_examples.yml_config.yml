@@ -4,7 +4,7 @@ codes:
 - certainty
 - confusion
 - neutral_statement
-dataset_name: confusion_examples.yml
+dataset_name: dataset-treinamento.csv
 embedding_model: https://www.kaggle.com/models/google/universal-sentence-encoder/tensorFlow2/multilingual/2
 epochs: 500
 l1_reg: 0.01

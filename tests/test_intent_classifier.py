@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 import unittest
 import numpy as np
@@ -85,24 +86,41 @@ class IntentClassifierTest(unittest.TestCase):
         else:
             print("⚙️ Using dummy model for accuracy demonstration")
 
-        examples_path = os.path.join(os.path.dirname(__file__), "..", "tools", "confusion", "confusion_examples.yml")
-        with open(examples_path, "r") as f:
-            data = yaml.safe_load(f)
+        
+        examples_path = os.path.join(os.path.dirname(__file__), "..", "tools", "confusion", "dataset-teste.csv")
 
-        print(f"📂 Loaded examples from {examples_path}")
-        samples = []
-        for intent_block in data:
-            for text in intent_block["examples"]:
-                samples.append((text, intent_block["intent"]))
-                if len(samples) >= 10:
-                    break
-            if len(samples) >= 10:
-                break
+        # ✅ Carrega o CSV
+        df = pd.read_csv(examples_path)
+        print(f"📂 Loaded examples from {examples_path} (CSV)")
+        
+        # ✅ Seleciona no máximo 10 amostras
+        samples = df.sample(n=min(10, len(df)), random_state=42)
+        texts = samples["texto"].tolist()
+        labels = samples["tipo"].tolist()
 
-        texts = [t for t, _ in samples]
-        labels = [l for _, l in samples]
+        # examples_path = os.path.join(os.path.dirname(__file__), "..", "tools", "confusion", "confusion_examples.yml")
+        # with open(examples_path, "r") as f:
+        #     data = yaml.safe_load(f)
+
+        # print(f"📂 Loaded examples from {examples_path}")
+        # samples = []
+        # for intent_block in data:
+        #     for text in intent_block["examples"]:
+        #         samples.append((text, intent_block["intent"]))
+        #         if len(samples) >= 10:
+        #             break
+        #     if len(samples) >= 10:
+        #         break
+
+        # texts = [t for t, _ in samples]
+        # labels = [l for _, l in samples]
         preds = self.clf.predict(texts)
         pred_labels = [p[0] for p in preds]
+
+        for text, pred, label in zip(texts, pred_labels, labels):
+            print(f"🗣️ Texto: {text}")
+            print(f"➡️ Predição: {pred} | 🎯 Esperado: {label}")
+            print("---")
 
         accuracy = sum(p == l for p, l in zip(pred_labels, labels)) / len(labels)
         print(f"🏆 Sample accuracy: {accuracy:.2f}")

@@ -37,7 +37,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: app/Dockerfile.app
+          file: app/app.Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/intent-classifier:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
